@@ -1,0 +1,143 @@
+{
+  "name": "gitea-notifications",
+  "displayName": "Gitea Notifications",
+  "description": "View your Gitea notifications directly inside VS Code. Stay updated on pull requests and issues without leaving your editor.",
+  "version": "0.1.0",
+  "icon": "logo.svg",
+  "publisher": "npellerin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npellerin/gitea-vscode-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/npellerin/gitea-vscode-extension/issues"
+  },
+  "homepage": "https://github.com/npellerin/gitea-vscode-extension#readme",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "gitea",
+    "notifications",
+    "git",
+    "pull request",
+    "issue",
+    "code review"
+  ],
+  "license": "MIT",
+  "activationEvents": [
+    "onView:gitea-notifications"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitea-notifications.setToken",
+        "title": "Gitea: Configurer le Token API"
+      },
+      {
+        "command": "gitea-notifications.refresh",
+        "title": "Gitea: Rafraîchir les notifications",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitea-notifications.markAsRead",
+        "title": "Gitea: Marquer comme lu"
+      },
+      {
+        "command": "gitea-notifications.markAllAsRead",
+        "title": "Gitea: Marquer toutes les notifications comme lues"
+      },
+      {
+        "command": "gitea-notifications.openInBrowser",
+        "title": "Gitea: Ouvrir dans le navigateur"
+      }
+    ],
+    "views": {
+      "gitea-notifications-view": [
+        {
+          "id": "gitea-notifications",
+          "name": "Notifications"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitea-notifications-view",
+          "title": "Gitea",
+          "icon": "./logo.svg",
+          "badge": "gitea-notifications.badge"
+        }
+      ]
+    },
+    "badges": [
+      {
+        "id": "gitea-notifications.badge",
+        "url": "./badge-icon.svg"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitea-notifications.refresh",
+          "when": "view == gitea-notifications",
+          "group": "navigation"
+        },
+        {
+          "command": "gitea-notifications.markAllAsRead",
+          "when": "view == gitea-notifications"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitea-notifications.markAsRead",
+          "when": "view == gitea-notifications && viewItem == notification"
+        },
+        {
+          "command": "gitea-notifications.openInBrowser",
+          "when": "view == gitea-notifications && viewItem == notification"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Gitea Notifications",
+      "properties": {
+        "gitea.serverUrl": {
+          "type": "string",
+          "default": "https://gitea.vpn",
+          "description": "URL du serveur Gitea de l'entreprise"
+        },
+        "gitea.pollingInterval": {
+          "type": "number",
+          "default": 60,
+          "minimum": 10,
+          "description": "Intervalle de rafraîchissement automatique en secondes"
+        },
+        "gitea.showUnreadBadge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Afficher le badge avec le nombre de notifications non lues dans la barre de statut"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "package": "vsce package --no-dependencies",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.21.0"
+  }
+}
