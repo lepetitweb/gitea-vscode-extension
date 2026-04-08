@@ -1,7 +1,8 @@
-import * as vscode from 'vscode';
-import type { 
-    GiteaUser, 
-    GiteaNotification, 
+// import * as vscode from 'vscode';
+import { Logger } from '../utils/logger';
+import type {
+    GiteaUser,
+    GiteaNotification,
     NotificationQueryOptions,
     GiteaPullRequest,
     GiteaPullRequestReview,
@@ -170,7 +171,8 @@ export class GiteaClient {
          * Récupère tous les commentaires d'une Pull Request
          */
         public async getPullRequestComments(owner: string, repo: string, number: number): Promise<GiteaPullRequestComment[]> {
-            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/comments`, {
+            // Gitea uses issues endpoint for PR comments
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/issues/${number}/comments`, {
                 headers: this.getHeaders()
             });
 
@@ -185,17 +187,30 @@ export class GiteaClient {
          * Soumet une review sur une Pull Request
          */
         public async submitPullRequestReview(owner: string, repo: string, number: number, review: any): Promise<GiteaPullRequestReview> {
+            // Gitea API requires properly formatted payload
+            const payload = {
+                body: review.body || '',
+                event: review.event
+            };
+
+            Logger.debug(`Submitting PR review payload: ${JSON.stringify(payload)}`);
+            
             const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/reviews`, {
                 method: 'POST',
                 headers: this.getHeaders(),
-                body: JSON.stringify(review)
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
-                throw new Error(`Impossible de soumettre la review: ${response.statusText}`);
+                const responseText = await response.text();
+                Logger.error(`API Error response: ${responseText}`);
+                throw new Error(`Impossible de soumettre la review: ${response.statusText} - ${responseText}`);
             }
 
-            return await response.json() as GiteaPullRequestReview;
+            const result = await response.json();
+            Logger.debug(`Review submitted successfully: ${JSON.stringify(result)}`);
+            
+            return result as GiteaPullRequestReview;
         }
 
         /**
@@ -243,5 +258,35 @@ export class GiteaClient {
                 event: 'COMMENT',
                 body: comment
             });
+        }
+
+        /**
+         * Récupère la liste des fichiers modifiés dans un PR
+         */
+        public async getPullRequestFiles(owner: string, repo: string, number: number): Promise<any[]> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/files`, {
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer les fichiers du PR: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        /**
+         * Récupère la liste des reviews et leurs commentaires
+         */
+        public async getPullRequestReviews(owner: string, repo: string, number: number): Promise<any[]> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/reviews`, {
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer les reviews du PR: ${response.statusText}`);
+            }
+
+            return await response.json();
         }
 }

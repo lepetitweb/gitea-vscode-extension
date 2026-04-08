@@ -57,7 +57,22 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	// Enregistrer le Tree View Pull Requests
-	vscode.window.registerTreeDataProvider('gitea-pull-requests', pullRequestsProvider);
+	const prTreeView = vscode.window.createTreeView('gitea-pull-requests', {
+		treeDataProvider: pullRequestsProvider
+	});
+
+	// Sauvegarder l'état déplié des PR
+	prTreeView.onDidExpandElement(e => {
+		if (e.element.type === 'pull-request' && e.element.pullRequest) {
+			pullRequestsProvider.markPRExpanded(e.element.pullRequest.number, true);
+		}
+	});
+
+	prTreeView.onDidCollapseElement(e => {
+		if (e.element.type === 'pull-request' && e.element.pullRequest) {
+			pullRequestsProvider.markPRExpanded(e.element.pullRequest.number, false);
+		}
+	});
 
 	// Initialiser GitDetector - utiliser les méthodes statiques
 	void GitDetector.detectRepository();
@@ -233,20 +248,39 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		const comment = await vscode.window.showInputBox({
-			prompt: 'Commentaire obligatoire',
-			placeHolder: 'Décrivez les modifications demandées...',
-			validateInput: value => value.trim().length < 5 ? 'Un commentaire est obligatoire' : null
+			prompt: 'Comment is required',
+			placeHolder: 'Describe the requested changes...',
+			validateInput: value => {
+				if (!value || value.trim().length < 2) {
+					return 'You must provide a comment when requesting changes';
+				}
+				return null;
+			}
 		});
 
-		if (!comment) { return; }
+		if (!comment || comment.trim().length === 0) { return; }
 
 		try {
 			await giteaClient.requestChangesPullRequest(pr.base.repo.owner.login, pr.base.repo.name, pr.number, comment);
-			vscode.window.showInformationMessage(`⚠️ Demande de modifications envoyée pour PR #${pr.number}`);
+			vscode.window.showInformationMessage(`⚠️ Changes requested for PR #${pr.number}`);
 			pullRequestsProvider.refresh();
 		} catch (err: any) {
-			Logger.error('❌ Erreur demande modifications', err);
-			vscode.window.showErrorMessage(`❌ Erreur: ${err.message}`);
+			Logger.error('❌ Request changes error', err);
+			// Extract actual error message from Gitea response
+			let errorMessage = err.message;
+			try {
+				// Try to parse Gitea JSON error message
+				const jsonStart = err.message.indexOf('{');
+				if (jsonStart > 0) {
+					const errorJson = JSON.parse(err.message.substring(jsonStart));
+					if (errorJson.message) {
+						errorMessage = errorJson.message;
+					}
+				}
+			} catch (e) {
+				// Keep original message if parsing fails
+			}
+			vscode.window.showErrorMessage(`❌ ${errorMessage}`);
 		}
 	});
 
@@ -331,6 +365,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		refreshPRCommand,
 		openPRInBrowserCommand,
 		approvePRCommand,
+		requestChangesPRCommand,
+		addCommentPRCommand,
+		mergePRCommand,
 		statusBarItem,
 		notificationTreeView
 	);

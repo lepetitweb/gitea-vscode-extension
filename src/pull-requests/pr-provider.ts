@@ -11,7 +11,9 @@ export enum PRTreeItemType {
     REPOSITORY = 'pr-repository',
     PULL_REQUEST = 'pull-request',
     LOADING = 'pr-loading',
-    EMPTY = 'pr-empty'
+    EMPTY = 'pr-empty',
+    DETAIL_TEXT = 'pr-detail-text',
+    ACTION_BUTTON = 'pr-action-button'
 }
 
 class PRTreeItem extends vscode.TreeItem {
@@ -88,6 +90,17 @@ class PRTreeItem extends vscode.TreeItem {
             case PRTreeItemType.EMPTY:
                 this.iconPath = new vscode.ThemeIcon('pass');
                 break;
+
+            case PRTreeItemType.DETAIL_TEXT:
+                // Pas d'icône pour les lignes de détail
+                this.iconPath = undefined;
+                // Désactiver l'indicateur de clic
+                this.command = undefined;
+                break;
+
+            case PRTreeItemType.ACTION_BUTTON:
+                // Les boutons d'action gardent leur icône
+                break;
         }
     }
 }
@@ -103,10 +116,31 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
     private currentOwner: string | undefined;
     private currentRepo: string | undefined;
     private giteaClient: GiteaClient | undefined;
+    private expandedPRs: Set<number> = new Set();
 
     setClient(client: GiteaClient): void {
         Logger.debug('PR Provider: Client Gitea défini');
         this.giteaClient = client;
+    }
+
+    /**
+     * Marque une PR comme étant dépliée / ouverte
+     */
+    markPRExpanded(prNumber: number, expanded: boolean): void {
+        if (expanded) {
+            this.expandedPRs.add(prNumber);
+            Logger.debug(`PR #${prNumber} marked as expanded`);
+        } else {
+            this.expandedPRs.delete(prNumber);
+            Logger.debug(`PR #${prNumber} marked as collapsed`);
+        }
+    }
+
+    /**
+     * Vérifie si une PR doit être affichée dépliée par défaut
+     */
+    isPRExpanded(prNumber: number): boolean {
+        return this.expandedPRs.has(prNumber);
     }
 
     refresh(): void {
@@ -135,9 +169,15 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
 
     setPullRequests(pullRequests: GiteaPullRequest[]): void {
         Logger.info(`PR Provider: ${pullRequests.length} pull requests reçues`);
-        this.pullRequests = pullRequests;
-        this.isOffline = false;
+        // Force complete refresh by clearing first
+        this.pullRequests = [];
         this.refresh();
+        // Wait next tick then restore actual PRs
+        setTimeout(() => {
+            this.pullRequests = pullRequests;
+            this.isOffline = false;
+            this.refresh();
+        }, 10);
     }
 
     setRepository(owner: string, repo: string): void {
@@ -160,19 +200,19 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
         return element;
     }
 
-    getChildren(element?: PRTreeItem): Thenable<PRTreeItem[]> {
+    async getChildren(element?: PRTreeItem): Promise<PRTreeItem[]> {
         if (this.isLoading) {
-            return Promise.resolve([
+            return [
                 new PRTreeItem(
                     'Chargement des Pull Requests...',
                     PRTreeItemType.LOADING,
                     vscode.TreeItemCollapsibleState.None
                 )
-            ]);
+            ];
         }
 
         if (this.isOffline) {
-            return Promise.resolve([
+            return [
                 new PRTreeItem(
                     '⚠️ Hors ligne - Impossible de joindre Gitea',
                     PRTreeItemType.OFFLINE,
@@ -183,7 +223,7 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
                     PRTreeItemType.OFFLINE,
                     vscode.TreeItemCollapsibleState.None
                 )
-            ]);
+            ];
         }
 
         if (!this.isConnected) {
@@ -197,14 +237,14 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
                 title: 'Configurer le token API'
             };
 
-            return Promise.resolve([
+            return [
                 new PRTreeItem(
                     'Non connecté',
                     PRTreeItemType.NOT_CONNECTED,
                     vscode.TreeItemCollapsibleState.None
                 ),
                 configItem
-            ]);
+            ];
         }
 
         if (!element) {
@@ -252,7 +292,7 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
                 ));
             }
 
-            return Promise.resolve(items);
+            return items;
         }
 
         if (element.type === PRTreeItemType.REPOSITORY && element.repository) {
@@ -260,26 +300,315 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
                 pr => pr.base.repo.id === element.repository!.id
             );
 
-            return Promise.resolve(
-                repoPullRequests
-                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-                    .map(pullRequest => {
-                        const item = new PRTreeItem(
-                            pullRequest.title,
-                            PRTreeItemType.PULL_REQUEST,
-                            vscode.TreeItemCollapsibleState.None,
-                            pullRequest
-                        );
-                        item.command = {
-                            command: 'gitea-pull-requests.openInBrowser',
-                            title: 'Ouvrir dans le navigateur',
-                            arguments: [item]
-                        };
-                        return item;
-                    })
-            );
+            return repoPullRequests
+                .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                .map(pullRequest => {
+                    const isExpanded = this.isPRExpanded(pullRequest.number);
+                    Logger.debug(`PR #${pullRequest.number} restore state: expanded=${isExpanded}`);
+                    
+                    const item = new PRTreeItem(
+                        pullRequest.title,
+                        PRTreeItemType.PULL_REQUEST,
+                        isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+                        pullRequest
+                    );
+                    // Remove direct browser opening on click
+                    item.command = undefined;
+                    return item;
+                });
         }
 
-        return Promise.resolve([]);
+        // Si c'est un item Pull Request, retourner les détails et les boutons d'action
+        if (element.type === PRTreeItemType.PULL_REQUEST && element.pullRequest) {
+            const pr = element.pullRequest;
+            const children: PRTreeItem[] = [];
+
+            // Section Details
+            children.push(new PRTreeItem(
+                `  **Details**`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+            
+            children.push(new PRTreeItem(
+                `    PR #${pr.number} from ${pr.user?.full_name || pr.user?.login || 'Unknown'}`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+            
+            children.push(new PRTreeItem(
+                `    Branch: ${pr.head.ref} → ${pr.base.ref}`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+            
+            if (pr.additions !== undefined && pr.deletions !== undefined) {
+                children.push(new PRTreeItem(
+                    `    Changes: +${pr.additions} -${pr.deletions} in ${pr.changed_files} file(s)`,
+                    PRTreeItemType.DETAIL_TEXT,
+                    vscode.TreeItemCollapsibleState.None
+                ));
+            }
+
+            if (pr.mergeable === false) {
+                children.push(new PRTreeItem(
+                    `    ⚠️ Merge conflicts detected`,
+                    PRTreeItemType.DETAIL_TEXT,
+                    vscode.TreeItemCollapsibleState.None
+                ));
+            }
+
+            // Separator
+            children.push(new PRTreeItem(
+                `  ────────────────────────────`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Comments section
+            children.push(new PRTreeItem(
+                `  **Comments**`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Load comments asynchronously
+            if (this.giteaClient && pr.base?.repo) {
+                try {
+                    const allComments: any[] = [];
+
+                    // Load regular comments
+                    try {
+                        const issueComments = await this.giteaClient.getPullRequestComments(
+                            pr.base.repo.owner.login,
+                            pr.base.repo.name,
+                            pr.number
+                        );
+                        allComments.push(...issueComments);
+                    } catch (e) {
+                        Logger.debug('No regular comments found');
+                    }
+
+                    // Load review comments
+                    try {
+                        const reviews = await this.giteaClient.getPullRequestReviews(
+                            pr.base.repo.owner.login,
+                            pr.base.repo.name,
+                            pr.number
+                        );
+                        
+                        reviews.forEach(review => {
+                            if (review.body && review.body.trim().length > 0) {
+                                allComments.push(review);
+                            }
+                        });
+                    } catch (e) {
+                        Logger.debug('No review comments found');
+                    }
+
+                    // Sort all comments by date
+                    allComments.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+                    if (allComments.length > 0) {
+                        allComments.forEach(comment => {
+                            let commentIcon = '💬';
+                            if (comment.state) {
+                                // This is a review comment
+                                commentIcon = '📝';
+                            }
+
+                            let dateStr = 'Invalid date';
+                            const dateValue = comment.created_at || comment.submitted_at;
+                            Logger.debug(`Parsing comment date: ${JSON.stringify(dateValue)} (created_at: ${JSON.stringify(comment.created_at)}, submitted_at: ${JSON.stringify(comment.submitted_at)})`);
+                            try {
+                                const commentDate = new Date(dateValue);
+                                Logger.debug(`Parsed date object: ${commentDate.toString()}, isValid: ${!isNaN(commentDate.getTime())}`);
+                                
+                                if (!isNaN(commentDate.getTime())) {
+                                    dateStr = commentDate.toLocaleDateString();
+                                }
+                            } catch (e) {
+                                Logger.debug(`Date parsing error: ${e}`);
+                            }
+
+                            const author = comment.user?.full_name || comment.user?.login || 'Unknown';
+                            
+                            children.push(new PRTreeItem(
+                                `    ${commentIcon} ${author} (${dateStr})`,
+                                PRTreeItemType.DETAIL_TEXT,
+                                vscode.TreeItemCollapsibleState.None
+                            ));
+                            
+                            // Wrap long comment text
+                            const commentLines = comment.body?.split('\n').filter((l: string) => l.trim()) || [];
+                            commentLines.slice(0, 3).forEach((line: string) => {
+                                children.push(new PRTreeItem(
+                                    `      ${line.substring(0, 80)}${line.length > 80 ? '...' : ''}`,
+                                    PRTreeItemType.DETAIL_TEXT,
+                                    vscode.TreeItemCollapsibleState.None
+                                ));
+                            });
+                            
+                            if (commentLines.length > 3) {
+                                children.push(new PRTreeItem(
+                                    `      [...]`,
+                                    PRTreeItemType.DETAIL_TEXT,
+                                    vscode.TreeItemCollapsibleState.None
+                                ));
+                            }
+                        });
+                    } else {
+                        children.push(new PRTreeItem(
+                            `    No comments on this PR`,
+                            PRTreeItemType.DETAIL_TEXT,
+                            vscode.TreeItemCollapsibleState.None
+                        ));
+                    }
+                } catch (err) {
+                    Logger.error('Failed to load PR comments', err);
+                    children.push(new PRTreeItem(
+                        `    ⚠️ Failed to load comments`,
+                        PRTreeItemType.DETAIL_TEXT,
+                        vscode.TreeItemCollapsibleState.None
+                    ));
+                }
+            }
+
+            // Separator before changed files
+            children.push(new PRTreeItem(
+                `  ────────────────────────────`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Changed files section
+            children.push(new PRTreeItem(
+                `  **Changed files**`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Load changed files
+            if (this.giteaClient && pr.base?.repo) {
+                try {
+                    const files = await this.giteaClient.getPullRequestFiles(
+                        pr.base.repo.owner.login,
+                        pr.base.repo.name,
+                        pr.number
+                    );
+
+                    if (files.length > 0) {
+                        files.forEach(file => {
+                            let statusIcon = '📄';
+                            if (file.status === 'added') statusIcon = '➕';
+                            if (file.status === 'removed') statusIcon = '➖';
+                            if (file.status === 'modified') statusIcon = '✏️';
+                            if (file.status === 'renamed') statusIcon = '🔄';
+
+                            const fileItem = new PRTreeItem(
+                                `    ${statusIcon} ${file.filename}  (+${file.additions} -${file.deletions})`,
+                                PRTreeItemType.ACTION_BUTTON,
+                                vscode.TreeItemCollapsibleState.None
+                            );
+                            
+                            fileItem.command = {
+                                command: 'vscode.open',
+                                title: `View diff`,
+                                arguments: [
+                                    vscode.Uri.parse(`${pr.html_url}/files`)
+                                ]
+                            };
+                            
+                            children.push(fileItem);
+                        });
+                    }
+                } catch (err) {
+                    Logger.error('Failed to load PR changed files', err);
+                }
+            }
+
+            // Separator before actions
+            children.push(new PRTreeItem(
+                `  ────────────────────────────`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Section Actions
+            children.push(new PRTreeItem(
+                `  **Actions**`,
+                PRTreeItemType.DETAIL_TEXT,
+                vscode.TreeItemCollapsibleState.None
+            ));
+
+            // Approve Button
+            const approveItem = new PRTreeItem(
+                `    ✅ Approve PR`,
+                PRTreeItemType.ACTION_BUTTON,
+                vscode.TreeItemCollapsibleState.None
+            );
+            approveItem.command = {
+                command: 'gitea-pull-requests.approve',
+                title: 'Approve PR',
+                arguments: [element]
+            };
+            children.push(approveItem);
+
+            // Request Changes Button
+            const changesItem = new PRTreeItem(
+                `    ⚠️ Request changes / Reject PR`,
+                PRTreeItemType.ACTION_BUTTON,
+                vscode.TreeItemCollapsibleState.None
+            );
+            changesItem.command = {
+                command: 'gitea-pull-requests.requestChanges',
+                title: 'Request changes / Reject PR',
+                arguments: [element]
+            };
+            children.push(changesItem);
+
+            // Add Comment Button
+            const commentItem = new PRTreeItem(
+                `    💬 Add comment`,
+                PRTreeItemType.ACTION_BUTTON,
+                vscode.TreeItemCollapsibleState.None
+            );
+            commentItem.command = {
+                command: 'gitea-pull-requests.addComment',
+                title: 'Add comment',
+                arguments: [element]
+            };
+            children.push(commentItem);
+
+            // Merge Button
+            const mergeItem = new PRTreeItem(
+                `    🔀 Merge PR`,
+                PRTreeItemType.ACTION_BUTTON,
+                vscode.TreeItemCollapsibleState.None
+            );
+            mergeItem.command = {
+                command: 'gitea-pull-requests.merge',
+                title: 'Merge PR',
+                arguments: [element]
+            };
+            children.push(mergeItem);
+
+            // Open in Browser Button
+            const browserItem = new PRTreeItem(
+                `    🌐 Open in Gitea`,
+                PRTreeItemType.ACTION_BUTTON,
+                vscode.TreeItemCollapsibleState.None
+            );
+            browserItem.command = {
+                command: 'gitea-pull-requests.openInBrowser',
+                title: 'Open in Gitea',
+                arguments: [element]
+            };
+            children.push(browserItem);
+
+            return children;
+        }
+
+        return [];
     }
 }
