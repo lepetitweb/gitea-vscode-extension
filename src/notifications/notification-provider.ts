@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
 import type { GiteaNotification, GiteaRepository } from '../api/types';
+import { Logger } from '../utils/logger';
 
 export enum TreeItemType {
     NOT_CONNECTED = 'not-connected',
+    OFFLINE = 'offline',
     CONNECTED = 'connected',
     REPOSITORY = 'repository',
     NOTIFICATION = 'notification',
-    LOADING = 'loading'
+    LOADING = 'loading',
+    EMPTY = 'empty'
 }
 
 class NotificationTreeItem extends vscode.TreeItem {
@@ -52,8 +55,14 @@ class NotificationTreeItem extends vscode.TreeItem {
             case TreeItemType.NOT_CONNECTED:
                 this.iconPath = new vscode.ThemeIcon('debug-disconnect');
                 break;
+            case TreeItemType.OFFLINE:
+                this.iconPath = new vscode.ThemeIcon('cloud-off');
+                break;
             case TreeItemType.LOADING:
                 this.iconPath = new vscode.ThemeIcon('loading~spin');
+                break;
+            case TreeItemType.EMPTY:
+                this.iconPath = new vscode.ThemeIcon('pass');
                 break;
         }
     }
@@ -65,6 +74,7 @@ export class NotificationProvider implements vscode.TreeDataProvider<Notificatio
 
     private notifications: GiteaNotification[] = [];
     private isConnected = false;
+    private isOffline = false;
     private isLoading = false;
 
     refresh(): void {
@@ -78,6 +88,12 @@ export class NotificationProvider implements vscode.TreeDataProvider<Notificatio
 
     setLoading(loading: boolean): void {
         this.isLoading = loading;
+        this.refresh();
+    }
+
+    setOffline(offline: boolean): void {
+        Logger.debug(`Notification Provider: État hors ligne = ${offline}`);
+        this.isOffline = offline;
         this.refresh();
     }
 
@@ -96,6 +112,21 @@ export class NotificationProvider implements vscode.TreeDataProvider<Notificatio
                 new NotificationTreeItem(
                     'Chargement des notifications...',
                     TreeItemType.LOADING,
+                    vscode.TreeItemCollapsibleState.None
+                )
+            ]);
+        }
+
+        if (this.isOffline) {
+            return Promise.resolve([
+                new NotificationTreeItem(
+                    '⚠️ Hors ligne - Impossible de joindre Gitea',
+                    TreeItemType.OFFLINE,
+                    vscode.TreeItemCollapsibleState.None
+                ),
+                new NotificationTreeItem(
+                    'Vérifiez votre connexion VPN ou réseau',
+                    TreeItemType.OFFLINE,
                     vscode.TreeItemCollapsibleState.None
                 )
             ]);

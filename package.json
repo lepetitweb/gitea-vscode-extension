@@ -29,9 +29,7 @@
     "code review"
   ],
   "license": "MIT",
-  "activationEvents": [
-    "onView:gitea-notifications"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -55,20 +53,53 @@
       {
         "command": "gitea-notifications.openInBrowser",
         "title": "Gitea: Ouvrir dans le navigateur"
+      },
+      {
+        "command": "gitea-pull-requests.refresh",
+        "title": "Gitea: Rafraîchir les Pull Requests",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitea-pull-requests.openInBrowser",
+        "title": "Gitea: Ouvrir PR dans le navigateur"
+      },
+      {
+        "command": "gitea-pull-requests.approve",
+        "title": "Gitea: ✅ Approuver la PR"
+      },
+      {
+        "command": "gitea-pull-requests.requestChanges",
+        "title": "Gitea: ⚠️ Demander des modifications"
+      },
+      {
+        "command": "gitea-pull-requests.addComment",
+        "title": "Gitea: 💬 Ajouter un commentaire"
+      },
+      {
+        "command": "gitea-pull-requests.merge",
+        "title": "Gitea: 🔀 Fusionner la PR"
       }
     ],
     "views": {
-      "gitea-notifications-view": [
+      "gitea": [
         {
           "id": "gitea-notifications",
-          "name": "Notifications"
+          "name": "NOTIFICATIONS",
+          "visibility": "visible",
+          "icon": "./logo.svg"
+        },
+        {
+          "id": "gitea-pull-requests",
+          "name": "PULL REQUESTS",
+          "visibility": "visible",
+          "icon": "./logo.svg"
         }
       ]
     },
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "gitea-notifications-view",
+          "id": "gitea",
           "title": "Gitea",
           "icon": "./logo.svg",
           "badge": "gitea-notifications.badge"
@@ -91,6 +122,11 @@
         {
           "command": "gitea-notifications.markAllAsRead",
           "when": "view == gitea-notifications"
+        },
+        {
+          "command": "gitea-pull-requests.refresh",
+          "when": "view == gitea-pull-requests",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -101,6 +137,26 @@
         {
           "command": "gitea-notifications.openInBrowser",
           "when": "view == gitea-notifications && viewItem == notification"
+        },
+        {
+          "command": "gitea-pull-requests.openInBrowser",
+          "when": "view == gitea-pull-requests && viewItem == pull-request"
+        },
+        {
+          "command": "gitea-pull-requests.approve",
+          "when": "view == gitea-pull-requests && viewItem == pull-request"
+        },
+        {
+          "command": "gitea-pull-requests.requestChanges",
+          "when": "view == gitea-pull-requests && viewItem == pull-request"
+        },
+        {
+          "command": "gitea-pull-requests.addComment",
+          "when": "view == gitea-pull-requests && viewItem == pull-request"
+        },
+        {
+          "command": "gitea-pull-requests.merge",
+          "when": "view == gitea-pull-requests && viewItem == pull-request"
         }
       ]
     },
@@ -122,6 +178,12 @@
           "type": "boolean",
           "default": true,
           "description": "Afficher le badge avec le nombre de notifications non lues dans la barre de statut"
+        },
+        "gitea.pullRequestsPollingInterval": {
+          "type": "number",
+          "default": 600,
+          "minimum": 60,
+          "description": "Intervalle de rafraîchissement automatique des Pull Requests en secondes (défaut: 10 minutes)"
         }
       }
     }

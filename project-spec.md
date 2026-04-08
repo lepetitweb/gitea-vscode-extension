@@ -23,10 +23,10 @@ A comprehensive technical document describing the VS Code extension architecture
 
 ## Project Overview
 
-**Extension Name**: Gitea Notifications  
-**Publisher**: npellerin  
-**Version**: 1.0.2  
-**VS Code Version**: ^1.80.0  
+**Extension Name**: Gitea Notifications
+**Publisher**: npellerin
+**Version**: 1.1.0
+**VS Code Version**: ^1.80.0
 **License**: MIT
 
 This extension integrates Gitea notifications directly into VS Code, allowing developers to:
@@ -35,6 +35,10 @@ This extension integrates Gitea notifications directly into VS Code, allowing de
 - Mark notifications as read
 - Open notifications in browser
 - Auto-refresh at configurable intervals
+- View assigned Pull Requests
+- Approve, comment, request changes and merge PR directly from VS Code
+- Automatic Git repository detection
+- VPN / offline connectivity detection
 
 ---
 

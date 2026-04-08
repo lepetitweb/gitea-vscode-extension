@@ -1,6 +1,26 @@
 # Gitea Notifications VSCode Extension
 
-View your Gitea notifications directly inside VS Code, built for self-hosted instances and enterprise environments.
+View your Gitea notifications and Pull Requests directly inside VS Code, built for self-hosted instances and enterprise environments.
+
+## ✨ Nouveautés version 1.1.0
+
+✅ **Nouveau module Pull Requests**
+- Liste automatique des Pull Requests ouvertes sur le repository courant
+- Détection automatique du repository Git du workspace
+- Actions directement depuis VS Code:
+  - ✅ Approuver une PR
+  - ⚠️ Demander des modifications
+  - 💬 Ajouter un commentaire
+  - 🔀 Fusionner une PR
+- Affichage statut, auteur, branches et conflits
+- Icônes colorées par état
+
+✅ **Améliorations générales**
+- Deux sections natives pliables dans le même panneau
+- Gestion automatique connexion VPN / état hors ligne
+- Badge compteur notifications uniquement
+- Polling indépendant pour notifications et PRs
+- Tous les cas d'erreur gérés et messages clairs
 
 ## Features
 
@@ -12,12 +32,16 @@ View your Gitea notifications directly inside VS Code, built for self-hosted ins
 ✅ Secure token storage in system keychain
 ✅ Shows PR/Issue author directly in the list
 ✅ Detailed tooltip on hover
+✅ **Pull Requests list integrated**
+✅ **Automatic Git repository detection**
+✅ **PR Review actions directly from VS Code**
+✅ **Offline / VPN connectivity detection**
 
 ## Configuration
 
 1. Install the extension
 2. Open command palette (`Ctrl+Shift+P`)
-3. Run command `Gitea: Setup API Token`
+3. Run command `Gitea: Configurer le Token API`
 4. Enter your Gitea server URL and personal access token
 
 ### Creating your Gitea token
@@ -27,6 +51,8 @@ View your Gitea notifications directly inside VS Code, built for self-hosted ins
    - `notifications:read`
    - `notifications:write`
    - `user:read`
+   - `repository:read`
+   - `pullrequest:write`
 3. Copy this token into the extension configuration
 
 ## Extension Settings
@@ -34,18 +60,24 @@ View your Gitea notifications directly inside VS Code, built for self-hosted ins
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `gitea.serverUrl` | `https://gitea.vpn` | Your Gitea server URL |
-| `gitea.pollingInterval` | `60` | Auto refresh interval in seconds |
+| `gitea.pollingInterval` | `60` | Auto refresh interval notifications (seconds) |
+| `gitea.pullRequestsPollingInterval` | `600` | Auto refresh interval PR (seconds) |
 | `gitea.showUnreadBadge` | `true` | Show unread count badge |
 
 ## Available Commands
 
 | Command | Description |
 |---------|-------------|
-| `Gitea: Setup API Token` | Configure your access credentials |
-| `Gitea: Refresh notifications` | Force refresh notification list |
-| `Gitea: Mark as read` | Mark selected notification as read |
-| `Gitea: Mark all as read` | Mark all notifications as read |
-| `Gitea: Open in browser` | Open notification in default browser |
+| `Gitea: Configurer le Token API` | Configure your access credentials |
+| `Gitea: Rafraîchir les notifications` | Force refresh notification list |
+| `Gitea: Rafraîchir les Pull Requests` | Force refresh PR list |
+| `Gitea: Marquer comme lu` | Mark selected notification as read |
+| `Gitea: Marquer toutes les notifications comme lues` | Mark all notifications as read |
+| `Gitea: Ouvrir dans le navigateur` | Open notification/PR in default browser |
+| `Gitea: ✅ Approuver la PR` | Approve a Pull Request |
+| `Gitea: ⚠️ Demander des modifications` | Request changes on a PR |
+| `Gitea: 💬 Ajouter un commentaire` | Add comment to a PR |
+| `Gitea: 🔀 Fusionner la PR` | Merge a Pull Request |
 
 ## Development
 

@@ -1,5 +1,12 @@
 import * as vscode from 'vscode';
-import type { GiteaUser, GiteaNotification, NotificationQueryOptions } from './types';
+import type { 
+    GiteaUser, 
+    GiteaNotification, 
+    NotificationQueryOptions,
+    GiteaPullRequest,
+    GiteaPullRequestReview,
+    GiteaPullRequestComment
+} from './types';
 
 export class GiteaClient {
     private baseUrl: string;
@@ -107,5 +114,134 @@ export class GiteaClient {
             }
     
             return await response.json();
+        }
+
+        /**
+         * Vérifie la connectivité avec le serveur Gitea
+         */
+        public async pingServer(): Promise<boolean> {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${this.baseUrl}/api/v1/version`, {
+                    headers: this.getHeaders(),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        /**
+         * Récupère toutes les Pull Requests assignées à l'utilisateur courant
+         */
+        public async getAssignedPullRequests(owner: string, repo: string): Promise<GiteaPullRequest[]> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls?state=open`, {
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer les PR assignés: ${response.statusText}`);
+            }
+
+            return await response.json() as GiteaPullRequest[];
+        }
+
+        /**
+         * Récupère les détails complets d'une Pull Request
+         */
+        public async getPullRequestDetails(owner: string, repo: string, number: number): Promise<GiteaPullRequest> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}`, {
+                headers: this.getHeaders()
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer le PR: ${response.statusText}`);
+            }
+    
+            return await response.json() as GiteaPullRequest;
+        }
+
+        /**
+         * Récupère tous les commentaires d'une Pull Request
+         */
+        public async getPullRequestComments(owner: string, repo: string, number: number): Promise<GiteaPullRequestComment[]> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/comments`, {
+                headers: this.getHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de récupérer les commentaires du PR: ${response.statusText}`);
+            }
+
+            return await response.json() as GiteaPullRequestComment[];
+        }
+
+        /**
+         * Soumet une review sur une Pull Request
+         */
+        public async submitPullRequestReview(owner: string, repo: string, number: number, review: any): Promise<GiteaPullRequestReview> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/reviews`, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify(review)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de soumettre la review: ${response.statusText}`);
+            }
+
+            return await response.json() as GiteaPullRequestReview;
+        }
+
+        /**
+         * Fusionne une Pull Request
+         */
+        public async mergePullRequest(owner: string, repo: string, number: number, options: any): Promise<boolean> {
+            const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/merge`, {
+                method: 'POST',
+                headers: this.getHeaders(),
+                body: JSON.stringify(options)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Impossible de fusionner le PR: ${response.statusText}`);
+            }
+
+            return true;
+        }
+
+        /**
+         * Approuve une Pull Request
+         */
+        public async approvePullRequest(owner: string, repo: string, number: number, comment?: string): Promise<GiteaPullRequestReview> {
+            return this.submitPullRequestReview(owner, repo, number, {
+                event: 'APPROVE',
+                body: comment || ''
+            });
+        }
+
+        /**
+         * Demande des modifications sur une Pull Request
+         */
+        public async requestChangesPullRequest(owner: string, repo: string, number: number, comment: string): Promise<GiteaPullRequestReview> {
+            return this.submitPullRequestReview(owner, repo, number, {
+                event: 'REQUEST_CHANGES',
+                body: comment
+            });
+        }
+
+        /**
+         * Ajoute un commentaire sur une Pull Request
+         */
+        public async addCommentPullRequest(owner: string, repo: string, number: number, comment: string): Promise<GiteaPullRequestReview> {
+            return this.submitPullRequestReview(owner, repo, number, {
+                event: 'COMMENT',
+                body: comment
+            });
         }
 }
