@@ -1,0 +1,10 @@
+.gitignore
+.env
+.git/**
+.vscode/**
+tsconfig.json
+src/**
+plans/**
+*.log
+*.map
+node_modules/**

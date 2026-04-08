@@ -2,17 +2,17 @@
   "name": "gitea-notifications",
   "displayName": "Gitea Notifications",
   "description": "View your Gitea notifications directly inside VS Code. Stay updated on pull requests and issues without leaving your editor.",
-  "version": "0.1.0",
-  "icon": "logo.svg",
+  "version": "1.0.2",
+  "icon": "logo.png",
   "publisher": "npellerin",
   "repository": {
     "type": "git",
-    "url": "https://github.com/npellerin/gitea-vscode-extension.git"
+    "url": "https://github.com/lepetitweb/gitea-vscode-extension.git"
   },
   "bugs": {
-    "url": "https://github.com/npellerin/gitea-vscode-extension/issues"
+    "url": "https://github.com/lepetitweb/gitea-vscode-extension/issues"
   },
-  "homepage": "https://github.com/npellerin/gitea-vscode-extension#readme",
+  "homepage": "https://github.com/lepetitweb/gitea-vscode-extension#readme",
   "engines": {
     "vscode": "^1.80.0"
   },
