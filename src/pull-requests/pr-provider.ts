@@ -248,40 +248,57 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
         }
 
         if (!element) {
-            // Grouper les PR par repository de destination
-            const repositories = new Map<number, { repository: GiteaRepository, pullRequests: GiteaPullRequest[] }>();
-
-            this.pullRequests.forEach(pr => {
-                const repoId = pr.base.repo.id;
-                if (!repositories.has(repoId)) {
-                    repositories.set(repoId, {
-                        repository: pr.base.repo,
-                        pullRequests: []
-                    });
-                }
-                repositories.get(repoId)!.pullRequests.push(pr);
-            });
-
             const items: PRTreeItem[] = [];
-
-            repositories.forEach((data) => {
-                const openCount = data.pullRequests.filter(pr => pr.state === PullRequestState.OPEN).length;
+            
+            // Afficher directement le nom du repository en titre
+            if (this.pullRequests.length > 0) {
+                const repository = this.pullRequests[0].base.repo;
+                const openCount = this.pullRequests.filter(pr => pr.state === PullRequestState.OPEN).length;
+                
+                // Titre du repository (non collapsable)
                 items.push(new PRTreeItem(
-                    `${data.repository.full_name} (${openCount})`,
+                    `📂 ${repository.full_name} (${openCount} PR)`,
                     PRTreeItemType.REPOSITORY,
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    undefined,
-                    data.repository
+                    vscode.TreeItemCollapsibleState.None
                 ));
-            });
-
-            if (items.length === 0) {
+                
+                // Séparateur
+                items.push(new PRTreeItem(
+                    `────────────────────────────`,
+                    PRTreeItemType.DETAIL_TEXT,
+                    vscode.TreeItemCollapsibleState.None
+                ));
+                
+                // Ajouter directement toutes les PR à la racine
+                this.pullRequests
+                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                    .forEach(pullRequest => {
+                        const isExpanded = this.isPRExpanded(pullRequest.number);
+                        Logger.debug(`PR #${pullRequest.number} restore state: expanded=${isExpanded}`);
+                        
+                        const item = new PRTreeItem(
+                            pullRequest.title,
+                            PRTreeItemType.PULL_REQUEST,
+                            isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+                            pullRequest
+                        );
+                        // Remove direct browser opening on click
+                        item.command = undefined;
+                        items.push(item);
+                    });
+            } else {
                 // Toujours afficher le repository même si aucun PR
                 if (this.currentOwner && this.currentRepo) {
                     items.push(new PRTreeItem(
-                        `${this.currentOwner}/${this.currentRepo}`,
+                        `📂 ${this.currentOwner}/${this.currentRepo}`,
                         PRTreeItemType.REPOSITORY,
-                        vscode.TreeItemCollapsibleState.Expanded
+                        vscode.TreeItemCollapsibleState.None
+                    ));
+                    
+                    items.push(new PRTreeItem(
+                        `────────────────────────────`,
+                        PRTreeItemType.DETAIL_TEXT,
+                        vscode.TreeItemCollapsibleState.None
                     ));
                 }
                 
@@ -293,29 +310,6 @@ export class PullRequestProvider implements vscode.TreeDataProvider<PRTreeItem> 
             }
 
             return items;
-        }
-
-        if (element.type === PRTreeItemType.REPOSITORY && element.repository) {
-            const repoPullRequests = this.pullRequests.filter(
-                pr => pr.base.repo.id === element.repository!.id
-            );
-
-            return repoPullRequests
-                .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-                .map(pullRequest => {
-                    const isExpanded = this.isPRExpanded(pullRequest.number);
-                    Logger.debug(`PR #${pullRequest.number} restore state: expanded=${isExpanded}`);
-                    
-                    const item = new PRTreeItem(
-                        pullRequest.title,
-                        PRTreeItemType.PULL_REQUEST,
-                        isExpanded ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
-                        pullRequest
-                    );
-                    // Remove direct browser opening on click
-                    item.command = undefined;
-                    return item;
-                });
         }
 
         // Si c'est un item Pull Request, retourner les détails et les boutons d'action

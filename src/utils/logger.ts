@@ -32,8 +32,7 @@ export class Logger {
     }
 
     private static log(level: string, message: string): void {
-        const timestamp = new Date().toISOString();
-        Logger.outputChannel.appendLine(`[${timestamp}] [${level}] ${message}`);
+        Logger.outputChannel.appendLine(`[${level}] ${message}`);
     }
 
     public static show(): void {

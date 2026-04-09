@@ -175,7 +175,7 @@ export class NotificationProvider implements vscode.TreeDataProvider<Notificatio
                 items.push(new NotificationTreeItem(
                     `${data.repository.full_name} (${unreadCount})`,
                     TreeItemType.REPOSITORY,
-                    vscode.TreeItemCollapsibleState.Collapsed,
+                    vscode.TreeItemCollapsibleState.Expanded,
                     undefined,
                     data.repository
                 ));
