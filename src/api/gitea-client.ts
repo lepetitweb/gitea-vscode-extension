@@ -188,9 +188,13 @@ export class GiteaClient {
          */
         public async submitPullRequestReview(owner: string, repo: string, number: number, review: any): Promise<GiteaPullRequestReview> {
             // Gitea API requires properly formatted payload
+            // On récupère d'abord le commit head du PR pour les versions anciennes de Gitea
+            const prDetails = await this.getPullRequest(owner, repo, number);
+            
             const payload = {
                 body: review.body || '',
-                event: review.event
+                event: review.event,
+                commit_id: prDetails.head.sha
             };
 
             Logger.debug(`Submitting PR review payload: ${JSON.stringify(payload)}`);
@@ -218,7 +222,7 @@ export class GiteaClient {
          */
         public async mergePullRequest(owner: string, repo: string, number: number, options: any): Promise<boolean> {
             const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/merge`, {
-                method: 'PUT',
+                method: 'POST',
                 headers: this.getHeaders(),
                 body: JSON.stringify(options)
             });

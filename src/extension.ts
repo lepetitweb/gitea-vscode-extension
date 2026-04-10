@@ -222,8 +222,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		const comment = await vscode.window.showInputBox({
-			prompt: 'Commentaire (optionnel)',
-			placeHolder: 'Entrez un commentaire pour cette approbation...'
+			prompt: 'Comment (optional)',
+			placeHolder: 'Enter a comment for this approval...'
 		});
 
 		try {
@@ -291,9 +291,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		Logger.info(`💬 Ajouter commentaire Pull Request #${pr.number}`);
 
 		const comment = await vscode.window.showInputBox({
-			prompt: 'Votre commentaire',
-			placeHolder: 'Entrez votre commentaire...',
-			validateInput: value => value.trim().length < 1 ? 'Le commentaire ne peut pas être vide' : null
+			prompt: 'Your comment',
+			placeHolder: 'Enter your comment...',
+			validateInput: value => value.trim().length < 1 ? 'Comment cannot be empty' : null
 		});
 
 		if (!comment) { return; }
@@ -314,31 +314,48 @@ export async function activate(context: vscode.ExtensionContext) {
 		const pr = item.pullRequest;
 		Logger.info(`🔀 Fusionner Pull Request #${pr.number}`);
 
-		// Vérifications d'état
+		// State validation
 		if (pr.state !== 'open') {
-			vscode.window.showErrorMessage('❌ Cette Pull Request n\'est pas ouverte');
+			vscode.window.showErrorMessage('❌ This Pull Request is not open');
 			return;
 		}
 		if (pr.draft) {
-			vscode.window.showErrorMessage('❌ Impossible de fusionner une PR en brouillon');
+			vscode.window.showErrorMessage('❌ Cannot merge a draft Pull Request');
 			return;
 		}
 		if (pr.mergeable === false) {
-			vscode.window.showErrorMessage('❌ Cette Pull Request présente des conflits de fusion');
+			vscode.window.showErrorMessage('❌ This Pull Request has merge conflicts');
 			return;
 		}
 
+		// Choose merge strategy
+		const mergeStrategies = [
+			{ label: '🔀 Create merge commit', description: 'Default - Preserves full history, shows merge point', value: 'merge' },
+			{ label: '⏩ Rebase fast-forward', description: 'Linear history, no merge commit, rewrites SHAs', value: 'rebase' },
+			{ label: '🔁 Rebase with merge commit', description: 'Best of both - Clean history + merge marker', value: 'rebase-merge' },
+			{ label: '📦 Squash all commits', description: 'Single clean commit, loses individual history', value: 'squash' }
+		];
+
+		const selectedStrategy = await vscode.window.showQuickPick(mergeStrategies, {
+			title: `Select merge strategy for PR #${pr.number}`,
+			placeHolder: 'Choose how you want to merge this pull request',
+			canPickMany: false
+		});
+
+		if (!selectedStrategy) { return; }
+
+		// Final confirmation
 		const confirm = await vscode.window.showWarningMessage(
-			`Are you sure you want to merge PR #${pr.number}?`,
+			`Confirm merge PR #${pr.number} using: ${selectedStrategy.label}?`,
 			{ modal: true },
-			'Yes, merge'
+			'✅ Yes, merge now'
 		);
 
-		if (confirm !== 'Yes, merge') { return; }
+		if (confirm !== '✅ Yes, merge now') { return; }
 
 		try {
 			await giteaClient.mergePullRequest(pr.base.repo.owner.login, pr.base.repo.name, pr.number, {
-				Do: 'merge',
+				Do: selectedStrategy.value,
 				DeleteHeadBranch: false
 			});
 			vscode.window.showInformationMessage(`🔀 Pull Request #${pr.number} fusionnée avec succès`);
@@ -348,11 +365,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			Logger.error('❌ Erreur fusion Pull Request', err);
 			
 			if (err.message.includes('403')) {
-				vscode.window.showErrorMessage('❌ Vous n\'avez pas les permissions nécessaires pour fusionner cette PR');
+				vscode.window.showErrorMessage('❌ You do not have permission to merge this Pull Request');
 			} else if (err.message.includes('409')) {
-				vscode.window.showErrorMessage('❌ Conflit de fusion, veuillez résoudre les conflits d\'abord');
+				vscode.window.showErrorMessage('❌ Merge conflict, please resolve conflicts first');
 			} else {
-				vscode.window.showErrorMessage(`❌ Erreur fusion: ${err.message}`);
+				vscode.window.showErrorMessage(`❌ Merge error: ${err.message}`);
 			}
 		}
 	});
