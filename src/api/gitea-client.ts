@@ -218,13 +218,13 @@ export class GiteaClient {
          */
         public async mergePullRequest(owner: string, repo: string, number: number, options: any): Promise<boolean> {
             const response = await fetch(`${this.baseUrl}/api/v1/repos/${owner}/${repo}/pulls/${number}/merge`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: this.getHeaders(),
                 body: JSON.stringify(options)
             });
 
             if (!response.ok) {
-                throw new Error(`Impossible de fusionner le PR: ${response.statusText}`);
+                throw new Error(`Failed to merge PR: ${response.statusText}`);
             }
 
             return true;
