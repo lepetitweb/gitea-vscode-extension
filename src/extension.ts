@@ -329,12 +329,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		const confirm = await vscode.window.showWarningMessage(
-			`Êtes-vous sûr de vouloir fusionner la PR #${pr.number} ?`,
+			`Are you sure you want to merge PR #${pr.number}?`,
 			{ modal: true },
-			'Oui, fusionner'
+			'Yes, merge'
 		);
 
-		if (confirm !== 'Oui, fusionner') { return; }
+		if (confirm !== 'Yes, merge') { return; }
 
 		try {
 			await giteaClient.mergePullRequest(pr.base.repo.owner.login, pr.base.repo.name, pr.number, {
@@ -342,7 +342,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				DeleteHeadBranch: false
 			});
 			vscode.window.showInformationMessage(`🔀 Pull Request #${pr.number} fusionnée avec succès`);
-			pullRequestsProvider.refresh();
+			// Rafraichir complètement la liste des PR depuis le serveur pour retirer celle qui vient d'être mergée
+			await fetchPullRequests();
 		} catch (err: any) {
 			Logger.error('❌ Erreur fusion Pull Request', err);
 			
