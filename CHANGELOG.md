@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.2] - 2026-04-10
+
+### ✨ Improvements & Fixes
+
+✅ **Automatic PR refresh after merge**
+- PR list is now refreshed immediately after merge operation
+- Merged PR is automatically removed from the list without manual refresh
+
+✅ **Fixed PR approval for Gitea <= 1.19**
+- Added required `commit_id` parameter to review API calls
+- Approval status is now properly recognized by Gitea
+- Works correctly on older Gitea versions
+
+✅ **Merge strategy selector**
+- 4 merge strategies available when merging a PR:
+  * Create merge commit
+  * Rebase fast-forward
+  * Rebase with merge commit
+  * Squash all commits
+- Clear descriptions for each strategy
+- Confirmation dialog with selected strategy
+
+✅ **Full English localization**
+- All user interface text translated to English
+- All log messages translated to English
+- All error messages translated to English
+- No remaining French text anywhere in the extension
+
+---
+
 ## [1.1.0] - 2026-04-08
 
 ### ✨ Major Release - Pull Requests module

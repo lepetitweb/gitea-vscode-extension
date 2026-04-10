@@ -348,7 +348,7 @@ All commands are prefixed with `gitea-notifications.`
 
 ### 1. setToken
 **Command**: `gitea-notifications.setToken`  
-**Title**: `Gitea: Configurer le Token API`  
+**Title**: `Gitea: Setup API Token`
 **Trigger**: Status bar click or command palette
 
 **Flow**:
@@ -360,23 +360,23 @@ All commands are prefixed with `gitea-notifications.`
 
 ### 2. refresh
 **Command**: `gitea-notifications.refresh`  
-**Title**: `Gitea: Rafraîchir les notifications`  
+**Title**: `Gitea: Refresh notifications`
 **Trigger**: Button in tree view title
 
 ### 3. markAsRead
 **Command**: `gitea-notifications.markAsRead`  
-**Title**: `Gitea: Marquer comme lu`  
+**Title**: `Gitea: Mark as read`
 **Trigger**: Right-click on notification  
 **Availability**: Only on notification items
 
 ### 4. markAllAsRead
 **Command**: `gitea-notifications.markAllAsRead`  
-**Title**: `Gitea: Marquer toutes les notifications comme lues`  
+**Title**: `Gitea: Mark all as read`
 **Trigger**: Button in tree view title
 
 ### 5. openInBrowser
 **Command**: `gitea-notifications.openInBrowser`  
-**Title**: `Gitea: Ouvrir dans le navigateur`  
+**Title**: `Gitea: Open in browser`
 **Trigger**: Click on notification  
 **Availability**: Only on notification items
 
@@ -394,18 +394,18 @@ Configurable via VS Code Settings (`Cmd+,` → Extensions → Gitea).
         "gitea.serverUrl": {
             "type": "string",
             "default": "https://gitea.vpn",
-            "description": "URL du serveur Gitea"
+            "description": "Gitea server URL"
         },
         "gitea.pollingInterval": {
             "type": "number",
             "default": 60,
             "minimum": 10,
-            "description": "Intervalle de rafraîchissement"
+            "description": "Refresh interval in seconds"
         },
         "gitea.showUnreadBadge": {
             "type": "boolean",
             "default": true,
-            "description": "Afficher le badge"
+            "description": "Show unread count badge"
         }
     }
 }
