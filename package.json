@@ -2,7 +2,7 @@
   "name": "gitea-notifications",
   "displayName": "Gitea Notifications and PRs",
   "description": "View your Gitea notifications directly inside VS Code. Stay updated on pull requests and issues without leaving your editor.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "icon": "logo.png",
   "publisher": "npellerin",
   "repository": {
